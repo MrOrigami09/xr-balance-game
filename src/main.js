@@ -1,252 +1,168 @@
 import "aframe";
+
 import "./style.css";
-import { supabase } from "./supabaseClient";
+
+import { renderTemplate } from "./ui/template";
+import { getDom } from "./ui/dom";
+
+import {
+  createPlayer,
+  updatePlayerSide,
+  restoreSavedPlayer,
+  startHeartbeat,
+  markPlayerInactive,
+} from "./services/playersService";
+
+import { subscribeToPlayers } from "./services/realtimeService";
+import { getActivePlayers, getBalanceData } from "./game/physics";
+import { initSceneElements, updateScene } from "./game/scene";
+import { initAudio, updateAudio } from "./game/audio";
+import { updateRanking, getRanking } from "./services/rankingService";
 
 const app = document.querySelector("#app");
 
+app.innerHTML = renderTemplate();
+
+const dom = getDom();
+
 let currentPlayer = null;
 
-app.innerHTML = `
-  <main class="container">
-    <section id="login-screen" class="card">
-      <h1>XR Balance Game</h1>
-      <p>Ingresa tu alias para participar</p>
+dom.joinButton.addEventListener("click", joinGame);
+dom.leftButton.addEventListener("click", () => changeSide("LEFT"));
+dom.rightButton.addEventListener("click", () => changeSide("RIGHT"));
 
-      <input
-        id="alias-input"
-        type="text"
-        placeholder="Tu alias"
-        maxlength="30"
-      />
+subscribeToPlayers(loadPlayers);
+restorePlayerOnLoad();
+startHeartbeat(() => currentPlayer);
 
-      <button id="join-button">Entrar al juego</button>
-
-      <p id="login-error" class="error"></p>
-    </section>
-
-    <section id="game-screen" class="card hidden">
-      <h2>Bienvenido, <span id="player-name"></span></h2>
-
-      <p>Selecciona tu lado:</p>
-
-      <div class="buttons">
-        <button id="left-button">LEFT</button>
-        <button id="right-button">RIGHT</button>
-      </div>
-
-      <div class="scoreboard">
-        <p>Izquierda: <strong id="left-count">0</strong></p>
-        <p>Derecha: <strong id="right-count">0</strong></p>
-        <p>Estado: <strong id="balance-state">Centro</strong></p>
-      </div>
-
-      <div class="scene-wrapper">
-        <a-scene embedded>
-          <a-sky color="#0f172a"></a-sky>
-
-          <a-plane
-            position="0 0 -4"
-            rotation="-90 0 0"
-            width="8"
-            height="8"
-            color="#334155">
-          </a-plane>
-
-          <a-cylinder
-            position="0 0.4 -4"
-            radius="0.15"
-            height="1"
-            color="#eab308">
-          </a-cylinder>
-
-          <a-box
-            id="balance-bar"
-            position="0 1 -4"
-            rotation="0 0 0"
-            width="4"
-            height="0.12"
-            depth="0.12"
-            color="#f8fafc">
-          </a-box>
-
-          <a-sphere
-            id="left-indicator"
-            position="-2 1.3 -4"
-            radius="0.2"
-            color="#38bdf8">
-          </a-sphere>
-
-          <a-sphere
-            id="right-indicator"
-            position="2 1.3 -4"
-            radius="0.2"
-            color="#f97316">
-          </a-sphere>
-
-          <a-text
-            id="scene-status"
-            value="Centro"
-            position="-1.4 2 -4"
-            color="#ffffff"
-            width="4">
-          </a-text>
-
-          <a-camera position="0 1.6 0"></a-camera>
-        </a-scene>
-      </div>
-    </section>
-  </main>
-`;
-
-const loginScreen = document.querySelector("#login-screen");
-const gameScreen = document.querySelector("#game-screen");
-const aliasInput = document.querySelector("#alias-input");
-const joinButton = document.querySelector("#join-button");
-const loginError = document.querySelector("#login-error");
-const playerName = document.querySelector("#player-name");
-
-const leftButton = document.querySelector("#left-button");
-const rightButton = document.querySelector("#right-button");
-
-const leftCount = document.querySelector("#left-count");
-const rightCount = document.querySelector("#right-count");
-const balanceState = document.querySelector("#balance-state");
-let balanceBar = null;
-let sceneStatus = null;
-
-joinButton.addEventListener("click", joinGame);
-leftButton.addEventListener("click", () => updateSide("LEFT"));
-rightButton.addEventListener("click", () => updateSide("RIGHT"));
-subscribeToPlayers();
+window.addEventListener("beforeunload", () => {
+  if (currentPlayer) {
+    markPlayerInactive(currentPlayer.id);
+  }
+});
 
 async function joinGame() {
-  const alias = aliasInput.value.trim();
+  const alias = dom.aliasInput.value.trim();
 
   if (!alias) {
-    loginError.textContent = "Ingresa un alias válido";
+    dom.loginError.textContent = "Ingresa un alias válido";
     return;
   }
 
-  const { data, error } = await supabase
-    .from("players")
-    .insert({
-      alias,
-      side: null,
-      is_active: true,
-    })
-    .select()
-    .single();
+  const { player, error } = await createPlayer(alias);
 
   if (error) {
     console.error("ERROR INSERT PLAYER:", error);
-    loginError.textContent = error.message;
+    dom.loginError.textContent = error.message;
     return;
   }
 
-  currentPlayer = data;
-
-  loginScreen.classList.add("hidden");
-  gameScreen.classList.remove("hidden");
-  playerName.textContent = currentPlayer.alias;
-
-  setTimeout(() => {
-    balanceBar = document.querySelector("#balance-bar");
-    sceneStatus = document.querySelector("#scene-status");
-  }, 100);
-
+  currentPlayer = player;
+  localStorage.setItem("current_player_id", currentPlayer.id);
+  showGameScreen();
   await loadPlayers();
 }
 
-async function updateSide(side) {
+async function restorePlayerOnLoad() {
+  const { player } = await restoreSavedPlayer();
+
+  if (!player) return;
+
+  currentPlayer = player;
+  showGameScreen();
+  await loadPlayers();
+}
+
+async function changeSide(side) {
   if (!currentPlayer) return;
 
-  const { data, error } = await supabase
-    .from("players")
-    .update({
-      side,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", currentPlayer.id)
-    .select()
-    .single();
+  const { player, error } = await updatePlayerSide(currentPlayer.id, side);
 
   if (error) {
-    console.error(error);
+    console.error("ERROR UPDATE SIDE:", error);
     return;
   }
-
-  currentPlayer = data;
+  currentPlayer = player;
   await loadPlayers();
 }
 
 async function loadPlayers() {
-  const { data, error } = await supabase
-    .from("players")
-    .select("*")
-    .eq("is_active", true);
+
+  const { players, error } =
+    await getActivePlayers();
 
   if (error) {
-    console.error(error);
+    console.error(
+      "ERROR LOAD PLAYERS:",
+      error
+    );
     return;
   }
 
-  const leftPlayers = data.filter((player) => player.side === "LEFT");
-  const rightPlayers = data.filter((player) => player.side === "RIGHT");
+  const balance =
+    getBalanceData(players);
 
-  leftCount.textContent = leftPlayers.length;
-  rightCount.textContent = rightPlayers.length;
+  dom.leftCount.textContent =
+    balance.leftCount;
 
-  updateBalanceState(leftPlayers.length, rightPlayers.length);
-}
+  dom.rightCount.textContent =
+    balance.rightCount;
 
-function updateBalanceState(left, right) {
-  const difference = right - left;
-  const rotation = Math.max(Math.min(difference * -8, 30), -30);
+  dom.balanceState.textContent =
+    balance.state;
 
-  let state = "Centro";
+  dom.leftPlayersList.innerHTML =
+    balance.leftPlayers
+      .map(
+        player =>
+          `<li>${player.alias}</li>`
+      )
+      .join("");
 
-  if (left > right) {
-    state = "Inclinación hacia la izquierda";
-  } else if (right > left) {
-    state = "Inclinación hacia la derecha";
+  dom.rightPlayersList.innerHTML =
+    balance.rightPlayers
+      .map(
+        player =>
+          `<li>${player.alias}</li>`
+      )
+      .join("");
+
+  updateScene(balance);
+
+  updateAudio(balance);
+
+  // ← AQUÍ VA EL RANKING
+
+  const totalPlayers =
+    balance.leftCount +
+    balance.rightCount;
+
+  await updateRanking(
+    totalPlayers
+  );
+
+  const ranking =
+    await getRanking();
+
+  if (ranking) {
+
+    dom.rankingValue.textContent =
+      `${ranking.max_players} jugadores`;
+
   }
 
-  balanceState.textContent = state;
-
-  if (balanceBar) {
-    balanceBar.setAttribute("rotation", `0 0 ${rotation}`);
-  }
-
-  if (sceneStatus) {
-    sceneStatus.setAttribute("value", state);
-  }
 }
 
-function subscribeToPlayers() {
-  supabase
-    .channel("players-realtime")
-    .on(
-      "postgres_changes",
-      {
-        event: "*",
-        schema: "public",
-        table: "players",
-      },
-      async () => {
-        await loadPlayers();
-      },
-    )
-    .subscribe();
+function showGameScreen() {
+  dom.loginScreen.classList.add("hidden");
+  dom.gameScreen.classList.remove("hidden");
+  dom.playerName.textContent = currentPlayer.alias;
+  initAudio();
+
+  setTimeout(() => {
+    initSceneElements();
+
+    const scene = document.querySelector("a-scene");
+    if (scene && scene.resize) scene.resize();
+  }, 300);
 }
-
-window.addEventListener("beforeunload", async () => {
-  if (!currentPlayer) return;
-
-  await supabase
-    .from("players")
-    .update({
-      is_active: false,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", currentPlayer.id);
-});
