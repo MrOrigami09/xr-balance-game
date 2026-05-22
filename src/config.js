@@ -1,2 +1,5 @@
-export const SUPABASE_URL = "https://rpzvcpahzxxatanteccz.supabase.co";
-export const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJwenZjcGFoenh4YXRhbnRlY2N6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzMDk0NjIsImV4cCI6MjA5NDg4NTQ2Mn0.mSf-CryIB0CeOUJ_rsuM15KY1sv50Vd9AwkAwcPRtiE";
+export const SUPABASE_URL =
+  import.meta.env.VITE_SUPABASE_URL;
+
+export const SUPABASE_ANON_KEY =
+  import.meta.env.VITE_SUPABASE_ANON_KEY;
