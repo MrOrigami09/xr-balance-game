@@ -6,6 +6,7 @@ export async function getActivePlayers() {
   const { data, error } = await supabase
     .from("players")
     .select("*")
+    .eq("is_active", true)
     .gte("last_seen", fifteenSecondsAgo);
 
   return {

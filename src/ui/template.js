@@ -1,6 +1,13 @@
 export function renderTemplate() {
   return `
     <main class="app-shell">
+      <section id="loading-screen" class="loading-screen hidden" aria-live="polite" aria-busy="true">
+        <div class="loading-panel">
+          <div class="loading-orbit" aria-hidden="true"></div>
+          <strong>Preparando Arena XR...</strong>
+        </div>
+      </section>
+
       <section id="login-screen" class="login-card">
         <div class="brand-mark">XR</div>
         <h1>XR Balance Game</h1>
@@ -43,11 +50,12 @@ export function renderTemplate() {
                 aria-pressed="false">
                 <span id="music-icon">🔇</span>
               </button>
-              <div class="connection-pill">
-                <span class="status-dot"></span>
-                Conectado
+              <div id="connection-pill" class="connection-pill connection-pill--connected">
+                <span class="status-dot" aria-hidden="true"></span>
+                <span id="connection-label">🟢 Conectado</span>
               </div>
-              <button id="exit-button" class="exit-button">Salir</button>
+              <button id="help-button" class="help-button" type="button">❔ Cómo jugar</button>
+              <button id="exit-button" class="exit-button" type="button">🚪 Salir</button>
             </div>
           </div>
         </header>
@@ -301,9 +309,30 @@ export function renderTemplate() {
         </div>
 
         <footer class="action-footer">
-          <button id="left-button">ALPHA</button>
-          <button id="right-button">OMEGA</button>
+          <button id="left-button">
+            <img class="team-button-icon" src="/assets/icons/alpha.svg" alt="" aria-hidden="true" />
+            <span>ALPHA</span>
+          </button>
+          <button id="right-button">
+            <img class="team-button-icon" src="/assets/icons/omega.svg" alt="" aria-hidden="true" />
+            <span>OMEGA</span>
+          </button>
         </footer>
+      </section>
+
+      <section id="help-modal" class="help-modal hidden" role="dialog" aria-modal="true" aria-labelledby="help-title">
+        <div class="help-dialog">
+          <div class="help-dialog__header">
+            <h2 id="help-title">Cómo jugar</h2>
+            <button id="help-close-button" class="help-close-button" type="button" aria-label="Cerrar">×</button>
+          </div>
+          <ol>
+            <li>Entrar</li>
+            <li>Elegir ALPHA u OMEGA</li>
+            <li>Balancear</li>
+            <li>Compartir URL</li>
+          </ol>
+        </div>
       </section>
     </main>
   `;

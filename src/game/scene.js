@@ -1,3 +1,5 @@
+import { updateBalanceDragSound } from "./audio";
+
 // Ajusta aqui escala, rotacion y altura de cada modelo GLB.
 // rotation corrige la orientacion propia del asset; side yaw mira hacia el centro.
 const MODEL_CONFIG = {
@@ -173,6 +175,7 @@ let currentRightScale = 1;
 let wobbleEnergy = 0;
 let activeVisualState = "stable";
 let lastHudValue = "";
+let lastBalanceSoundRotation = 0;
 
 export function initSceneElements() {
   sceneWrapper = document.querySelector(".scene-wrapper");
@@ -251,6 +254,11 @@ function animateBalance(time = 0) {
   rotationVelocity = (rotationVelocity + spring) * damping;
   currentRotation += rotationVelocity;
   wobbleEnergy = Math.max(0, wobbleEnergy * 0.965 - 0.002);
+  const displayedRotation = currentRotation + wobble + criticalPulse;
+  const balanceMovement = Math.abs(displayedRotation - lastBalanceSoundRotation);
+
+  updateBalanceDragSound(balanceMovement);
+  lastBalanceSoundRotation = displayedRotation;
 
   currentLeftScale = lerp(currentLeftScale, 1 + targetLeftCount * 0.17, 0.085);
   currentRightScale = lerp(currentRightScale, 1 + targetRightCount * 0.17, 0.085);
@@ -258,12 +266,12 @@ function animateBalance(time = 0) {
   if (balancePivot) {
     balancePivot.setAttribute(
       "rotation",
-      `0 0 ${currentRotation + wobble + criticalPulse}`
+      `0 0 ${displayedRotation}`
     );
   } else if (balanceBar) {
     balanceBar.setAttribute(
       "rotation",
-      `0 0 ${currentRotation + wobble + criticalPulse}`
+      `0 0 ${displayedRotation}`
     );
   }
 
