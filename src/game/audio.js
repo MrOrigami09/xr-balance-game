@@ -1,6 +1,7 @@
 let calm;
 let tension;
 let danger;
+let audioEnabled = false;
 
 export function initAudio() {
   if (calm) return;
@@ -15,8 +16,6 @@ export function initAudio() {
   });
 
   calm.volume = 0.35;
-
-  calm.play().catch(() => {});
 }
 
 function stopAll() {
@@ -28,9 +27,29 @@ function stopAll() {
   });
 }
 
+export function toggleAudio() {
+  audioEnabled = !audioEnabled;
+  initAudio();
+
+  if (!audioEnabled) {
+    stopAll();
+  }
+
+  return audioEnabled;
+}
+
+export function isAudioEnabled() {
+  return audioEnabled;
+}
+
 export function updateAudio(balance) {
 
-  if (!calm) return;
+  if (!audioEnabled) {
+    stopAll();
+    return;
+  }
+
+  initAudio();
 
   const diff = Math.abs(balance.difference);
 
@@ -38,16 +57,16 @@ export function updateAudio(balance) {
 
   if (diff === 0) {
     calm.volume = 0.35;
-    calm.play();
+    calm.play().catch(() => {});
   }
 
   else if (diff <= 3) {
     tension.volume = 0.35;
-    tension.play();
+    tension.play().catch(() => {});
   }
 
   else {
     danger.volume = 0.45;
-    danger.play();
+    danger.play().catch(() => {});
   }
 }

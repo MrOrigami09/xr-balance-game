@@ -4,6 +4,9 @@ export function getDom() {
     gameScreen: document.querySelector("#game-screen"),
     aliasInput: document.querySelector("#alias-input"),
     joinButton: document.querySelector("#join-button"),
+    musicButton: document.querySelector("#music-button"),
+    musicIcon: document.querySelector("#music-icon"),
+    exitButton: document.querySelector("#exit-button"),
     loginError: document.querySelector("#login-error"),
     playerName: document.querySelector("#player-name"),
 

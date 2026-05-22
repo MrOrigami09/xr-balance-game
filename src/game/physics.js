@@ -22,6 +22,7 @@ export function getBalanceData(players) {
   const rightCount = rightPlayers.length;
 
   const difference = rightCount - leftCount;
+  const absDifference = Math.abs(difference);
 
   const offset = Math.max(
     Math.min(difference * 25, 150),
@@ -33,12 +34,18 @@ export function getBalanceData(players) {
     -32
   );
 
-  let state = "Centro";
+  let state = "BALANCE ESTABLE";
+  let visualState = "stable";
 
-  if (leftCount > rightCount) {
-    state = "Inclinación hacia la izquierda";
+  if (absDifference >= 4) {
+    state = "DESBALANCE CRITICO";
+    visualState = "critical";
+  } else if (leftCount > rightCount) {
+    state = "VENTAJA ALPHA";
+    visualState = "left";
   } else if (rightCount > leftCount) {
-    state = "Inclinación hacia la derecha";
+    state = "VENTAJA OMEGA";
+    visualState = "right";
   }
 
   return {
@@ -47,8 +54,10 @@ export function getBalanceData(players) {
     leftCount,
     rightCount,
     difference,
+    absDifference,
     offset,
     rotation,
     state,
+    visualState,
   };
 }
