@@ -43,7 +43,10 @@ const BALANCE_END_CONFIG = {
   alphaGlow: "#38bdf8",
   omegaGlow: "#fb923c",
   // Ajustar largo de la cuerda aqui.
-  chainLength: 0.46,
+  chainLength: 0.52,
+  chainRadius: 0.012,
+  chainSpacing: 0.07,
+  chainLinks: 5,
   // Ajustar tamano del diamante aqui.
   diamondSize: 0.22,
   verticalOffset: -0.04,
@@ -471,20 +474,13 @@ function createBalanceEnds() {
 function createBalanceEnd(root, color, glow) {
   if (!root || root.children.length) return;
 
-  const chain = document.createElement("a-cylinder");
   const topCone = document.createElement("a-cone");
   const bottomCone = document.createElement("a-cone");
   const shine = document.createElement("a-sphere");
   const diamondY = -BALANCE_END_CONFIG.chainLength;
   const halfDiamond = BALANCE_END_CONFIG.diamondSize / 2;
 
-  chain.setAttribute("position", `0 ${-BALANCE_END_CONFIG.chainLength / 2} 0`);
-  chain.setAttribute("radius", "0.025");
-  chain.setAttribute("height", BALANCE_END_CONFIG.chainLength);
-  chain.setAttribute(
-    "material",
-    "color: #fbbf24; emissive: #d97706; emissiveIntensity: 0.2; metalness: 0.58; roughness: 0.28"
-  );
+  createHanger(root);
 
   topCone.setAttribute("position", `0 ${diamondY + halfDiamond / 2} 0`);
   topCone.setAttribute("radius-bottom", BALANCE_END_CONFIG.diamondSize);
@@ -516,7 +512,50 @@ function createBalanceEnd(root, color, glow) {
     "property: scale; dir: alternate; dur: 1200; easing: easeInOutSine; loop: true; to: 1.18 1.18 1.18"
   );
 
-  root.append(chain, topCone, bottomCone, shine);
+  root.append(topCone, bottomCone, shine);
+}
+
+function createHanger(root) {
+  const connector = document.createElement("a-torus");
+
+  connector.setAttribute("position", "0 0 0");
+  connector.setAttribute("rotation", "90 0 0");
+  connector.setAttribute("radius", "0.09");
+  connector.setAttribute("radius-tubular", "0.01");
+  connector.setAttribute(
+    "material",
+    "color: #fbbf24; emissive: #d97706; emissiveIntensity: 0.22; metalness: 0.62; roughness: 0.26"
+  );
+  root.appendChild(connector);
+
+  [-1, 1].forEach(side => {
+    const cable = document.createElement("a-cylinder");
+    const x = side * BALANCE_END_CONFIG.chainSpacing;
+
+    cable.setAttribute("position", `${x} ${-BALANCE_END_CONFIG.chainLength / 2} 0`);
+    cable.setAttribute("radius", BALANCE_END_CONFIG.chainRadius);
+    cable.setAttribute("height", BALANCE_END_CONFIG.chainLength);
+    cable.setAttribute(
+      "material",
+      "color: #fbbf24; emissive: #d97706; emissiveIntensity: 0.18; metalness: 0.6; roughness: 0.28"
+    );
+    root.appendChild(cable);
+  });
+
+  for (let index = 1; index <= BALANCE_END_CONFIG.chainLinks; index += 1) {
+    const y = -(BALANCE_END_CONFIG.chainLength / (BALANCE_END_CONFIG.chainLinks + 1)) * index;
+    const link = document.createElement("a-torus");
+
+    link.setAttribute("position", `0 ${y} 0`);
+    link.setAttribute("rotation", `${index % 2 ? 90 : 0} 0 0`);
+    link.setAttribute("radius", "0.065");
+    link.setAttribute("radius-tubular", "0.008");
+    link.setAttribute(
+      "material",
+      "color: #fde68a; emissive: #d97706; emissiveIntensity: 0.16; metalness: 0.58; roughness: 0.3"
+    );
+    root.appendChild(link);
+  }
 }
 
 function applyVisualState(state) {
